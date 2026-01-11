@@ -14,18 +14,17 @@ pipeline {
         PROD_SERVER       = "ubuntu@172.31.20.72"           // ← ton serveur de prod
     }
 
-   stage('Gradle Build') {
+  stage('Maven Build') {
     steps {
-        sh '''
-            chmod +x gradlew
-            ./gradlew clean build
-        '''
+        sh 'mvn clean package'
         
-        // Archivage de l'artefact JAR généré
-        archiveArtifacts artifacts: 'build/libs/*.jar',
-                         fingerprint: true
+        // Archive le fichier WAR généré
+        archiveArtifacts artifacts: 'target/java-web-app-*.war', 
+                         fingerprint: true,
+                         allowEmptyArchive: false  // false = échec si le fichier n'existe pas
     }
 }
+
 
         stage('Maven Build') {
     steps {
