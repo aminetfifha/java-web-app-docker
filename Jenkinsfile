@@ -24,16 +24,19 @@ pipeline {
             }
         }
 
-        stage('Maven Build') {
+      stage('Gradle Build') {
     steps {
-        sh 'mvn clean package'
+        sh '''
+            chmod +x gradlew
+            ./gradlew clean build
+        '''
         
-        // Archive le fichier WAR généré
-        archiveArtifacts artifacts: 'target/java-web-app-*.war', 
-                         fingerprint: true,
-                         allowEmptyArchive: false  // false = échec si le fichier n'existe pas
+        // Archivage de l'artefact JAR généré
+        archiveArtifacts artifacts: 'build/libs/*.jar',
+                         fingerprint: true
     }
 }
+
 
         stage('Build & Tag Docker Image') {
             steps {
