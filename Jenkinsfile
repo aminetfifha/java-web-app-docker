@@ -1,46 +1,69 @@
 pipeline {
     agent any
 
-    stages {
+    environment {
+        // Variables DockerHub
+        DOCKERHUB_REPO = "dockerhandson/java-web-app"
+        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
+    }
 
-        stage('SCM Checkout') {
+    stages {
+        stage('Checkout SCM') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/aminetfifha/java-web-app-docker.git'
+                // Cloner le repo depuis GitHub
+                git url: 'https://github.com/aminetfifha/java-web-app-docker.git', branch: 'master'
             }
         }
 
         stage('Maven Build') {
+            tools {
+                maven 'Maven3'  // Nom de ton Maven tool dans Jenkins
+                jdk 'Java21'    // Nom de ton JDK 21 dans Jenkins
+            }
             steps {
+                // Nettoyer et compiler le projet + générer le WAR
                 sh 'mvn clean package'
             }
         }
 
-        stage('Docker Build') {
+        stage('Archive WAR') {
             steps {
-                sh 'docker build -t aminetfifha/java-web-app:1.0 .'
+                // Archiver le fichier WAR généré
+                archiveArtifacts artifacts: 'target/*.war', fingerprint: true
             }
         }
 
-        stage('Docker Push') {
+        stage('Build & Tag Docker Image') {
             steps {
-                withCredentials([string(credentialsId: 'Docker_Hub_Pwd', variable: 'DOCKER_PWD')]) {
-                    sh 'docker login -u aminetfifha -p $DOCKER_PWD'
+                script {
+                    // Construire l'image Docker avec le WAR
+                    docker.build("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}", ".")
                 }
-                sh 'docker push aminetfifha/java-web-app:1.0'
             }
         }
 
-        stage('Deploy on Remote Server') {
+        stage('Push Docker Image') {
             steps {
-                sshagent(['DOCKER_SERVER']) {
-
-                    sh 'ssh -o StrictHostKeyChecking=no amine@172.28.53.219 docker stop java-app || true'
-                    sh 'ssh amine@172.28.53.219 docker rm java-app || true'
-                    sh 'ssh amine@172.28.53.219 docker pull aminetfifha/java-web-app:1.0'
-                    sh 'ssh amine@172.28.53.219 docker run -d -p 8080:8080 --name java-app aminetfifha/java-web-app:1.0'
+                script {
+                    // Décommenter si tu veux push sur DockerHub
+                    // docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-credentials-id') {
+                    //     docker.image("${DOCKERHUB_REPO}:${DOCKER_IMAGE_TAG}").push()
+                    // }
                 }
             }
         }
     }
+
+    post {
+        always {
+            echo "Pipeline terminé !"
+        }
+        success {
+            echo "Build réussi ✅"
+        }
+        failure {
+            echo "Échec du pipeline 😞"
+        }
+    }
 }
+
