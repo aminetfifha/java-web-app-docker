@@ -1,39 +1,37 @@
 pipeline {
     agent any 
     
-    // Déclaration des outils nécessaires (doivent exister dans Global Tool Configuration)
     tools {
-        maven 'Maven3'          // ← Change ce nom selon ce que tu as configuré dans Jenkins → Tools
-        // jdk 'JDK17'          // décommente si tu as configuré un JDK spécifique
+        maven 'Maven3'  // Change selon ton Maven configuré dans Jenkins
+        // jdk 'JDK21'  // Décommente si nécessaire
     }
 
     environment {
-        // Variables globales utiles
-        DOCKER_IMAGE_NAME = "dockerhandson/java-web-app"   // ← change par ton nom DockerHub
-        DOCKER_TAG        = "${env.BUILD_NUMBER}"           // versionnement par numéro de build
-        PROD_SERVER       = "ubuntu@172.31.20.72"           // ← ton serveur de prod
+        DOCKER_IMAGE_NAME = "docker00a/java-web-app"  // Ton nom DockerHub
+        DOCKER_TAG        = "${env.BUILD_NUMBER}"     // Version par numéro de build
+        PROD_SERVER       = "ubuntu@172.31.20.72"     // Ton serveur de prod
+        DOCKER_USER       = "docker00a"               // Ton DockerHub username
+        DOCKER_PASS       = "dckr_pat_VeoCPegbkfcalWuBYJogoqjbfN4"  // Ton DockerHub token
     }
 
     stages {
-        
+
         stage('Checkout') {
             steps {
                 git branch: 'master',
-                    url: 'https://github.com/aminetfifha/java-web-app-docker.git',
-                    credentialsId: 'github-pat'   // ← ton credential HTTPS PAT
+                    url: 'https://github.com/aminetfifha/java-web-app-docker.git'
             }
         }
 
         stage('Maven Build') {
-    steps {
-        sh 'mvn clean package'
-        
-        // Archive le fichier WAR généré
-        archiveArtifacts artifacts: 'target/java-web-app-*.war', 
-                         fingerprint: true,
-                         allowEmptyArchive: false  // false = échec si le fichier n'existe pas
-    }
-}
+            steps {
+                sh 'mvn clean package'
+                
+                archiveArtifacts artifacts: 'target/java-web-app*.war', 
+                                 fingerprint: true,
+                                 allowEmptyArchive: false
+            }
+        }
 
         stage('Build & Tag Docker Image') {
             steps {
@@ -42,32 +40,24 @@ pipeline {
             }
         }
 
-       stage('Push Docker Image') {
-    steps {
-        withCredentials([usernamePassword(
-            credentialsId: 'dockerhub-credentials',
-            usernameVariable: 'DOCKER_USER',
-            passwordVariable: 'DOCKER_PASS'
-        )]) {
-            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-            sh "docker push docker00a/java-web-app:${BUILD_NUMBER}"
-            sh "docker push docker00a/java-web-app:latest"
+        stage('Push Docker Image') {
+            steps {
+                sh """
+                echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}
+                docker push ${DOCKER_IMAGE_NAME}:latest
+                docker logout
+                """
+            }
         }
-    }
-}
 
         stage('Deploy to Production') {
-            when {
-                branch 'master'
-            }
             steps {
-                sshagent(credentials: ['prod-server-ssh-key']) {   // ← credential SSH recommandé
+                sshagent(credentials: ['prod-server-ssh-key']) {  // Clé SSH pour le serveur de prod
                     sh """
                         ssh -o StrictHostKeyChecking=no ${PROD_SERVER} << EOF
                             docker stop java-web-app || true
                             docker rm java-web-app || true
-                            # Optionnel : nettoyer les anciennes images (attention en prod !)
-                            # docker rmi \$(docker images -q ${DOCKER_IMAGE_NAME}) || true
                             
                             docker pull ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}
                             
@@ -84,8 +74,6 @@ pipeline {
 
     post {
         always {
-            // Nettoyage léger (optionnel)
-            sh 'docker logout || true'
             echo "Pipeline terminé - statut: ${currentBuild.currentResult}"
         }
         success {
