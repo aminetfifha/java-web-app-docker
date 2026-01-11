@@ -14,15 +14,18 @@ pipeline {
         PROD_SERVER       = "ubuntu@172.31.20.72"           // ← ton serveur de prod
     }
 
-    stages {
+   stage('Gradle Build') {
+    steps {
+        sh '''
+            chmod +x gradlew
+            ./gradlew clean build
+        '''
         
-        stage('Checkout') {
-            steps {
-                git branch: 'master',
-                    url: 'https://github.com/aminetfifha/java-web-app-docker.git',
-                    credentialsId: 'github-pat'   // ← ton credential HTTPS PAT
-            }
-        }
+        // Archivage de l'artefact JAR généré
+        archiveArtifacts artifacts: 'build/libs/*.jar',
+                         fingerprint: true
+    }
+}
 
         stage('Maven Build') {
     steps {
