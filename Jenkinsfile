@@ -42,22 +42,19 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image') {
-            when {
-                branch 'master'   // on push uniquement sur master (sécurité)
-            }
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-credentials',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
-                    sh "docker push ${DOCKER_IMAGE_NAME}:latest"
-                }
-            }
+       stage('Push Docker Image') {
+    steps {
+        withCredentials([usernamePassword(
+            credentialsId: 'dockerhub-credentials',
+            usernameVariable: 'DOCKER_USER',
+            passwordVariable: 'DOCKER_PASS'
+        )]) {
+            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+            sh "docker push docker00a/java-web-app:${BUILD_NUMBER}"
+            sh "docker push docker00a/java-web-app:latest"
         }
+    }
+}
 
         stage('Deploy to Production') {
             when {
