@@ -29,7 +29,7 @@ pipeline {
         sh 'mvn clean package'
         
         // Archive le fichier WAR généré
-        archiveArtifacts artifacts: 'target/java-web-app-*.war', 
+        archiveArtifacts artifacts: 'target/java-web-app-*.jar', 
                          fingerprint: true,
                          allowEmptyArchive: false  // false = échec si le fichier n'existe pas
     }
