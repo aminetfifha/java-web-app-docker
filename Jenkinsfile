@@ -25,12 +25,15 @@ pipeline {
         }
 
         stage('Maven Build') {
-            steps {
-                sh 'mvn clean package'
-                // archiveArtifacts permet de conserver le .jar généré
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
+    steps {
+        sh 'mvn clean package'
+        
+        // Archive le fichier WAR généré
+        archiveArtifacts artifacts: 'target/java-web-app-*.war', 
+                         fingerprint: true,
+                         allowEmptyArchive: false  // false = échec si le fichier n'existe pas
+    }
+}
 
         stage('Build & Tag Docker Image') {
             steps {
